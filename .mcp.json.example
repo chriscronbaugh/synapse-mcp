@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "synapse": {
+      "command": "synapse-mcp",
+      "env": {
+        "SYNAPSE_URL": "https://localhost:4443",
+        "SYNAPSE_USER": "root",
+        "SYNAPSE_PASS": "secret",
+        "SYNAPSE_VERIFY_SSL": "false",
+        "MCP_MODE": "abstract",
+        "MCP_TRANSPORT": "stdio"
+      }
+    }
+  }
+}

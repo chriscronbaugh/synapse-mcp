@@ -1,0 +1,26 @@
+[project]
+name = "synapse-mcp"
+version = "0.1.0"
+description = "MCP server for Synapse hypergraph"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=1.26.0",
+    "httpx>=0.28.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+]
+benchmark = []
+
+[project.scripts]
+synapse-mcp = "synapse_mcp.server:main"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -1,0 +1,68 @@
+services:
+  aha:
+    image: vertexproject/synapse-aha:v2.x.x
+    container_name: syn-aha
+    restart: unless-stopped
+    volumes:
+      - aha-storage:/vertex/storage
+    environment:
+      - SYN_AHA_AHA_NETWORK=synapse.local
+      - SYN_AHA_DNS_NAME=aha
+      - SYN_AHA_HTTPS_PORT=null
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 27272), timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  axon:
+    image: vertexproject/synapse-axon:v2.x.x
+    container_name: syn-axon
+    restart: unless-stopped
+    depends_on:
+      aha:
+        condition: service_healthy
+    volumes:
+      - axon-storage:/vertex/storage
+    environment:
+      - SYN_AXON_HTTPS_PORT=null
+      - SYN_AXON_AHA_PROVISION=${AXON_PROVISION_URL:-}
+
+  jsonstor:
+    image: vertexproject/synapse-jsonstor:v2.x.x
+    container_name: syn-jsonstor
+    restart: unless-stopped
+    depends_on:
+      aha:
+        condition: service_healthy
+    volumes:
+      - jsonstor-storage:/vertex/storage
+    environment:
+      - SYN_JSONSTOR_HTTPS_PORT=null
+      - SYN_JSONSTOR_AHA_PROVISION=${JSONSTOR_PROVISION_URL:-}
+
+  cortex:
+    image: vertexproject/synapse-cortex:v2.x.x
+    container_name: syn-cortex
+    restart: unless-stopped
+    depends_on:
+      aha:
+        condition: service_healthy
+    ports:
+      - "4443:4443"
+    volumes:
+      - cortex-storage:/vertex/storage
+      - ./data:/data
+    environment:
+      - SYN_CORTEX_HTTPS_PORT=4443
+      - SYN_CORTEX_AXON=aha://axon...
+      - SYN_CORTEX_JSONSTOR=aha://jsonstor...
+      - SYN_CORTEX_AHA_PROVISION=${CORTEX_PROVISION_URL:-}
+      - SYN_LOG_LEVEL=INFO
+
+volumes:
+  aha-storage:
+  axon-storage:
+  jsonstor-storage:
+  cortex-storage:

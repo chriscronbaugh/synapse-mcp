@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+dist/
+*.egg-info/
+data/*.nodes
+test/
+tests/
+project.md
+*.lock
+.mcp.json
