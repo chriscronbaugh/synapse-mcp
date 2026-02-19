@@ -545,6 +545,80 @@ def register_abstract_tools(mcp: FastMCP, get_client) -> None:
         return await _run_query(client, query, count_only, limit, view=view)
 
     @mcp.tool()
+    async def search_tags(
+        prefix: str | None = None,
+        query: str | None = None,
+        has_doc: bool = False,
+        count_only: bool = False,
+        limit: int = 200,
+        view: str | None = None,
+    ) -> str:
+        """Search the tag taxonomy (syn:tag nodes) to discover available tags.
+
+        Returns tag names with their title, doc, depth, and parent tag.
+        Use this to understand what tags exist before filtering nodes by tag.
+
+        Args:
+            prefix: Tag prefix to search under (e.g. 'rep.mandiant', 'cno.threat').
+                    Returns the prefix tag and all children beneath it.
+            query: Substring to match against tag name, title, or doc (case-insensitive).
+                   Use when you don't know the exact prefix (e.g. 'apt1', 'dynamic dns').
+            has_doc: If True, only return tags that have a :doc property set.
+            count_only: If True, return just the count instead of tag data.
+            limit: Maximum number of tags to return (default 200). Ignored if count_only.
+            view: Optional view iden to query. Uses default view if not specified.
+        """
+        client: SynapseClient = get_client()
+
+        # Build the Storm query
+        if prefix:
+            # Lift the prefix tag and everything under it
+            escaped = _escape_storm_str(prefix)
+            storm = f'syn:tag="{escaped}" syn:tag^="{escaped}."'
+        elif query:
+            # Search across tag name, title, and doc
+            escaped = _escape_storm_str(query)
+            storm = (
+                f'syn:tag~="{escaped}" '
+                f'syn:tag:title~="{escaped}" '
+                f'syn:tag:doc~="{escaped}" '
+                f'| uniq'
+            )
+        else:
+            storm = "syn:tag"
+
+        if has_doc:
+            storm += " +syn:tag:doc"
+
+        if count_only:
+            count = await client.storm_count(storm, view=view)
+            return json.dumps({"count": count}, default=str)
+
+        limited = f"{storm} | limit {limit}"
+        nodes = await client.storm_nodes(limited, view=view)
+
+        tags = []
+        for n in nodes:
+            props = n.get("props", {})
+            entry: dict = {
+                "tag": n.get("value", ""),
+                "title": props.get("title"),
+            }
+            if props.get("doc"):
+                entry["doc"] = props["doc"]
+            entry["depth"] = props.get("depth", 0)
+            if props.get("up"):
+                entry["parent"] = props["up"]
+            tags.append(entry)
+
+        if len(nodes) >= limit:
+            count = await client.storm_count(storm, view=view)
+        else:
+            count = len(nodes)
+
+        return json.dumps({"count": count, "tags": tags}, default=str)
+
+    @mcp.tool()
     async def get_model(name_filter: str | None = None) -> str:
         """Look up Synapse data model forms and their properties.
 
